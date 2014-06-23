@@ -1,8 +1,7 @@
 import operator
 import re
 
-EXACT_GUESS_POINTS = 2
-CLOSEST_GUESS_POINTS = 1
+import settings
 
 class GameError(Exception):
 	pass
@@ -85,7 +84,7 @@ class Round:
 		self.open = True
 		self.match = match
 		self.scores = {}
-		self.winners = None
+		self.winners = {}
 
 	def __hash__(self):
 		return hash(tuple(set(self.match.teams)))
@@ -106,7 +105,9 @@ class Round:
 		# Determine differences between bets and final score
 		deltas = sorted([(score.author, final_score - score) for score in self.scores.values()], key=operator.itemgetter(1))
 		# Calculate scores -- 2 if exact, otherwise 1 for being closest
-		self.winners = {d[0]: EXACT_GUESS_POINTS if d[1] == 0 else CLOSEST_GUESS_POINTS for d in deltas if d[1] == deltas[0][1]}
+		for delta in deltas:
+			if delta[1] == deltas[0][1]:
+				self.winners[delta[0]] = settings.EXACT_GUESS_POINTS if delta[1] == 0 else settings.CLOSEST_GUESS_POINTS
 		self.open = False
 
 class Match:

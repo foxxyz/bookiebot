@@ -7,6 +7,7 @@ from objects import Game, GameError, Match, Round, Score
 
 
 class BookieBotTests(FullStackTest):
+	
     def setUp(self):
         me = os.path.dirname(os.path.realpath(os.path.abspath(__file__)))
         # Adding /la/bla to path is needed because of the path mangling

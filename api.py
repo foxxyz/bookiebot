@@ -1,9 +1,9 @@
+import json
 import operator
 import requests
 from time import time
 
-NEW_MATCH_TIME_OFFSET = 1800 # 30 Minutes
-HIPCHAT_AUTH_TOKEN = "0BRCJWCy5aLy0Avshzqo3GMCgEHVtAHR8VV9GDo9"
+import settings
 
 class FIFAAPI:
 	URL = 'http://live.mobileapp.fifa.com/api/wc/matches'
@@ -30,7 +30,7 @@ class FIFAAPI:
 		"Get upcoming matches"
 		all_matches = self.data['group'] + self.data['second']
 		# Include matches that have started less than 30 min ago
-		upcoming = [match for match in all_matches if match['d_Date'] > ((time() - NEW_MATCH_TIME_OFFSET) * 1000)]
+		upcoming = [match for match in all_matches if match['d_Date'] > ((time() - settings.NEW_MATCH_TIME_OFFSET) * 1000)]
 		return sorted(upcoming, key=operator.itemgetter('c_Date'))
 
 
@@ -41,6 +41,15 @@ class HipchatAPI:
 	_data = None
 	_data_time = None
 
+	def send(self, msg, room_name, color="gray"):
+		url = self.ANNOUNCE_URL.format(name=room_name)
+		headers = {'content-type': 'application/json'}
+		payload = {
+			"message": msg,
+			"color": color,
+		}
+		return requests.post(url, data=json.dumps(payload), params={'auth_token': settings.HIPCHAT_AUTH_TOKEN}, headers=headers)
+
 	def get_username(self, user_id):
 		for user in self.get_users():
 			if user['id'] == int(user_id):
@@ -49,7 +58,7 @@ class HipchatAPI:
 	def get_users(self):
 		"Get all users in group"
 		if not self._data or time() - self._data_time > self.CACHE_TIME:
-			self._data = requests.get(self.USER_URL, params={'auth_token': HIPCHAT_AUTH_TOKEN})
+			self._data = requests.get(self.USER_URL, params={'auth_token': settings.HIPCHAT_AUTH_TOKEN})
 			self._data_time = time()
 		return self._data.json()['items']
 

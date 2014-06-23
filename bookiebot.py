@@ -4,10 +4,14 @@ from time import time
 from errbot import BotPlugin, botcmd
 from errbot.utils import get_sender_username as get_jabber_id
 
-from api import FIFAAPI, HipchatAPI
-from objects import Game, GameError, Match, EXACT_GUESS_POINTS
+# Hack to ensure we can import local modules
+from sys import path
+from os.path import dirname, realpath
+path.append(dirname(realpath(__file__)))
 
-PRE_MATCH_BETTING_TIME = 900 # Bets can be placed 15 Minutes before match start
+import settings
+from api import FIFAAPI, HipchatAPI
+from objects import Game, GameError, Match
 
 def get_sender_username(msg):
 	"Method override to grab real user names via Hipchat's API"
@@ -32,7 +36,7 @@ class BookieBot(BotPlugin):
 	@staticmethod
 	def summarize(winners):
 		"String summary of winners"
-		if winners.values()[0] == EXACT_GUESS_POINTS:
+		if winners.values()[0] == settings.EXACT_GUESS_POINTS:
 			score_text = "for guessing the score correctly"
 		else:
 			score_text = "for being closest"
@@ -46,9 +50,9 @@ class BookieBot(BotPlugin):
 		self.start_poller(301, self.end_matches)
 
 	def announce(self, msg):
-		"Send message to chat room (fix this)"
-		self.send('SideStudios', msg, message_type='groupchat')
-
+		"Send message to chat room"
+		HipchatAPI().send(msg, settings.HIPCHAT_ROOM_NAME)
+		
 	def deactivate(self):
 		"Save game on deactivation"
 		self['game'] = self.game
@@ -94,7 +98,7 @@ class BookieBot(BotPlugin):
 		if not upcoming_matches:
 			return
 		match = upcoming_matches[0]
-		if (match['d_Date'] / 1000) - time() < PRE_MATCH_BETTING_TIME:
+		if (match['d_Date'] / 1000) - time() < settings.PRE_MATCH_BETTING_TIME:
 			try:
 				self.start_match(None, [match['c_HomeTeam_en'], match['c_AwayTeam_en']], match['n_MatchID'])
 			except GameError:
