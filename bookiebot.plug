@@ -1,0 +1,9 @@
+[Core]
+Name = BookieBot
+Module = bookiebot
+    
+[Documentation]
+Description = Football Betting Bot
+
+[Python]
+Version = 3
