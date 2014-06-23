@@ -17,11 +17,12 @@ def get_sender_username(msg):
 	"Method override to grab real user names via Hipchat's API"
 	jabber_id = get_jabber_id(msg)
 	try:
-		return HipchatAPI().get_user(jabber_id.split('_')[1])
+		return HipchatAPI().get_username(jabber_id.split('_')[1])
 	except KeyError:
 		return jabber_id
 
 def string_join_and(items):
+	items = list(items)
 	if len(items) > 1:
 		string = ", ".join(items[:-1])
 		return '{} and {}'.format(string, items[-1])
@@ -36,11 +37,12 @@ class BookieBot(BotPlugin):
 	@staticmethod
 	def summarize(winners):
 		"String summary of winners"
-		if winners.values()[0] == settings.EXACT_GUESS_POINTS:
+		points = list(winners.values())[0]
+		if points == settings.EXACT_GUESS_POINTS:
 			score_text = "for guessing the score correctly"
 		else:
 			score_text = "for being closest"
-		return '{} get{} {}'.format(string_join_and(winners.keys()), 's' if len(winners) > 1 else '', score_text)
+		return '{} get{} {} point{} {}'.format(string_join_and(winners.keys()), '' if len(winners) > 1 else 's', points, 's' if points > 1 else '', score_text)
 
 	def activate(self):
 		"Start game polling on activation"
@@ -67,7 +69,7 @@ class BookieBot(BotPlugin):
 
 	def end_matches(self):
 		"Look for matches that have ended and close them if necessary"
-		for match in [self.FIFA.get_match(rnd.match.uuid) for rnd in self.game.active_rounds if hasattr(rnd.match, 'uuid')]:
+		for match in [self.fifa.get_match(rnd.match.uuid) for rnd in self.game.active_rounds if hasattr(rnd.match, 'uuid')]:
 			print(match['n_HomeGoals'], match['n_AwayGoals'], match['b_Finished'])
 			if match['b_Finished']:
 				self.end_match(None, '{}-{} {}'.format(match['n_HomeGoals'], match['n_AwayGoals'], match['c_HomeTeam_en']))
@@ -94,7 +96,7 @@ class BookieBot(BotPlugin):
 
 	def start_matches(self):
 		"Look for upcoming matches and start a new round if necessary"
-		upcoming_matches = self.FIFA.get_upcoming_matches()
+		upcoming_matches = self.fifa.get_upcoming_matches()
 		if not upcoming_matches:
 			return
 		match = upcoming_matches[0]
