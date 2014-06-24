@@ -34,6 +34,9 @@ class BookieBot(BotPlugin):
 
 	@botcmd(admin_only=True)
 	def end_match(self, _, args):
+		"""
+		Close an ongoing match with a final score (Example: `!end match 2-1 England`)
+		"""
 		try:
 			match, final_score, winners = self.game.close_round(args)
 		except ValueError:
@@ -41,13 +44,6 @@ class BookieBot(BotPlugin):
 		self.announce("Final score: {}, {}".format(final_score, self.summarize(winners)))
 		self.announce(self.scoreboard(None, None))
 		return "Closed match {} with {}".format(match, final_score)
-
-	def end_matches(self):
-		"Look for matches that have ended and close them if necessary"
-		for match in [self.fifa.get_match(rnd.match.uuid) for rnd in self.game.active_rounds if hasattr(rnd.match, 'uuid')]:
-			print(match['n_HomeGoals'], match['n_AwayGoals'], match['b_Finished'])
-			if match['b_Finished']:
-				self.end_match(None, '{}-{} {}'.format(match['n_HomeGoals'], match['n_AwayGoals'], match['c_HomeTeam_en']))
 
 	@botcmd(admin_only=True)
 	def init(self, msg, args):
@@ -65,22 +61,13 @@ class BookieBot(BotPlugin):
 
 	@botcmd(split_args_with=' vs. ', admin_only=True)
 	def start_match(self, _, args, uuid=None):
-		"Start a new match and round"
+		"""
+		Start a new match and round (Example: `!start match Germany vs. England`)
+		"""
 		match = Match(args, uuid)
 		self.game.new_round(match)
 		self.announce("Now taking bets for {}...".format(match))
 		return "Started match {}".format(match)
-
-	def start_matches(self):
-		"Look for upcoming matches on FIFA and start a new round if necessary"
-		for match in self.fifa.get_upcoming_matches():
-			# Only consider matches that are within PRE_MATCH_BETTING_TIME seconds of starting
-			if (match['d_Date'] / 1000) - time() > settings.PRE_MATCH_BETTING_TIME:
-				continue
-			try:
-				self.start_match(None, [match['c_HomeTeam_en'], match['c_AwayTeam_en']], match['n_MatchID'])
-			except GameError:
-				pass
 
 	@botcmd
 	def scores(self, _, dummy):
@@ -92,7 +79,7 @@ class BookieBot(BotPlugin):
 	@botcmd
 	def score(self, msg, args):
 		"""
-		Allow user to enter a score and play.
+		Allow user to enter a score and play (Example: `!score 1-0 Germany`)
 
 		Can be automatically without !score via callback_message
 		"""
@@ -114,6 +101,9 @@ class BookieBot(BotPlugin):
 
 	@botcmd(admin_only=True)
 	def scoreboard_set(self, _, args):
+		"""
+		Manually enter scoreboard data as a JSON object for a starting score list.
+		"""
 		self.game = Game(json.loads(args))
 		return self.scoreboard(None, None)
 
@@ -128,9 +118,27 @@ class BookieBot(BotPlugin):
 		if Score.regex.match(str(msg)):
 			self.respond(msg, self.score(msg, str(msg)))
 
+	def end_matches(self):
+		"Look for matches that have ended and close them if necessary"
+		for match in [self.fifa.get_match(rnd.match.uuid) for rnd in self.game.active_rounds if hasattr(rnd.match, 'uuid')]:
+			print(match['n_HomeGoals'], match['n_AwayGoals'], match['b_Finished'])
+			if match['b_Finished']:
+				self.end_match(None, '{}-{} {}'.format(match['n_HomeGoals'], match['n_AwayGoals'], match['c_HomeTeam_en']))
+
 	def respond(self, msg, text):
 		"Shortcut for send()"
 		self.send(msg.getFrom(), text, message_type=msg.getType())
+
+	def start_matches(self):
+		"Look for upcoming matches on FIFA and start a new round if necessary"
+		for match in self.fifa.get_upcoming_matches():
+			# Only consider matches that are within PRE_MATCH_BETTING_TIME seconds of starting
+			if (match['d_Date'] / 1000) - time() > settings.PRE_MATCH_BETTING_TIME:
+				continue
+			try:
+				self.start_match(None, [match['c_HomeTeam_en'], match['c_AwayTeam_en']], match['n_MatchID'])
+			except GameError:
+				pass
 
 	@staticmethod
 	def announce(msg):
