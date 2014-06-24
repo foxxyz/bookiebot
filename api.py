@@ -3,9 +3,13 @@ import operator
 import requests
 from time import time
 
+import config
 import settings
 
 class FIFAAPI:
+	"""
+	Quick and dirty implementation of the FIFA data stream
+	"""
 	URL = 'http://live.mobileapp.fifa.com/api/wc/matches'
 	CACHE_TIME = 300 # 5 Minutes
 	_data = None
@@ -35,30 +39,35 @@ class FIFAAPI:
 
 
 class HipchatAPI:
+	"""
+	Quick and dirty implementation of some Hipchat API methods
+	"""
 	ANNOUNCE_URL = "https://api.hipchat.com/v2/room/{name}/notification"
 	USER_URL = 'https://api.hipchat.com/v2/user'
 	CACHE_TIME = 3600 * 24 # 1 day
 	_data = None
 	_data_time = None
 
-	def send(self, msg, room_name, color="gray"):
-		url = self.ANNOUNCE_URL.format(name=room_name)
+	def send(self, msg, room_name=None, color="gray"):
+		"Make an announcement"
+		url = self.ANNOUNCE_URL.format(name=room_name or config.CHATROOM_NAME)
 		headers = {'content-type': 'application/json'}
 		payload = {
 			"message": msg,
 			"color": color,
 		}
-		return requests.post(url, data=json.dumps(payload), params={'auth_token': settings.HIPCHAT_AUTH_TOKEN}, headers=headers)
+		return requests.post(url, data=json.dumps(payload), params={'auth_token': config.BOT_IDENTITY['token']}, headers=headers)
 
 	def get_username(self, user_id):
+		"Convert a jabber ID to a proper Hipchat username"
 		for user in self.get_users():
 			if user['id'] == int(user_id):
-				return user['mention_name']
+				return user['name']
 
 	def get_users(self):
-		"Get all users in group"
+		"Get data for all users in current group"
 		if not self._data or time() - self._data_time > self.CACHE_TIME:
-			self._data = requests.get(self.USER_URL, params={'auth_token': settings.HIPCHAT_AUTH_TOKEN})
+			self._data = requests.get(self.USER_URL, params={'auth_token': config.BOT_IDENTITY['token']})
 			self._data_time = time()
 		return self._data.json()['items']
 

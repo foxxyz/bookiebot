@@ -93,6 +93,9 @@ class Round:
 		"Equality test"
 		return set(self.match.teams) == set(other.match.teams)
 
+	def __str__(self):
+		return str(self.match)
+
 	def add(self, score, author):
 		"Add a bet to this round"
 		if not self.open:
@@ -171,6 +174,7 @@ class Score:
 		return '<Score {}>'.format(str(self))
 
 	def __str__(self):
+		"Pretty formatted string"
 		score = '{}-{}'.format(*sorted(self.score.values(), reverse=True))
 		if self.winner:
 			score += ' ' + self.winner
@@ -179,7 +183,7 @@ class Score:
 		return score
 
 	def __sub__(self, other):
-		"Subtract scores"
+		"Subtract scores by calculating differentials"
 		if other.match != self.match:
 			raise TypeError("Can't subtract scores from different matches!")
 		return sum([abs(other[team] - self[team]) for team in self.match.teams])
