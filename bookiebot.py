@@ -2,7 +2,6 @@ import json
 from time import time
 
 from errbot import BotPlugin, botcmd
-from errbot.utils import get_sender_username as err_get_sender_username
 
 # Hack to ensure we can import local modules
 from sys import path
@@ -12,30 +11,8 @@ path.append(dirname(realpath(__file__)))
 import settings
 from api import FIFAAPI, HipchatAPI
 from objects import Game, GameError, Match, Score
+from utils import get_sender_username, string_join_and
 
-
-def get_sender_username(msg):
-	"""
-	Method override to grab real user names via Hipchat's API
-
-	Needed because in private chats, err will get the JID (I.E. 12345_334837),
-	but in rooms it will receive the proper username (I.E. Joe Smith). So we
-	need to account for both.
-	"""
-	username = err_get_sender_username(msg)
-	if '_' in username:
-		try:
-			username = HipchatAPI().get_username(username.split('_')[1])
-		except KeyError:
-			pass
-	return username.split(' ')[0]
-
-def string_join_and(items):
-	items = list(items)
-	if len(items) > 1:
-		string = ", ".join(items[:-1])
-		return '{} and {}'.format(string, items[-1])
-	return items[0]
 
 class BookieBot(BotPlugin):
 	"""Football Betting Bot for Err"""
@@ -49,10 +26,6 @@ class BookieBot(BotPlugin):
 		self.game = self['game'] if 'game' in self else Game()
 		self.start_poller(60, self.start_matches)
 		self.start_poller(301, self.end_matches)
-
-	def announce(self, msg):
-		"Send message to chat room"
-		HipchatAPI().send(msg)
 
 	def deactivate(self):
 		"Save game on deactivation"
@@ -158,6 +131,11 @@ class BookieBot(BotPlugin):
 	def respond(self, msg, text):
 		"Shortcut for send()"
 		self.send(msg.getFrom(), text, message_type=msg.getType())
+
+	@staticmethod
+	def announce(msg):
+		"Send message to Hipchat room"
+		HipchatAPI().send(msg)
 
 	@staticmethod
 	def summarize(winners):
