@@ -50,6 +50,8 @@ class HipchatAPI:
 
 	def send(self, msg, room_name=None, color="gray"):
 		"Make an announcement"
+		if not hasattr(config, 'CHATROOM_NAME'):
+			return
 		url = self.ANNOUNCE_URL.format(name=room_name or config.CHATROOM_NAME)
 		headers = {'content-type': 'application/json'}
 		payload = {

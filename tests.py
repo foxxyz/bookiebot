@@ -3,21 +3,37 @@ import unittest
 
 from errbot.backends.test import FullStackTest, pushMessage, popMessage
 
-from objects import Game, GameError, Match, Round, Score
+from game import Game, GameError, Match, Round, Score
 
 
 class BookieBotTests(FullStackTest):
 	
-    def setUp(self):
-        me = os.path.dirname(os.path.realpath(os.path.abspath(__file__)))
-        # Adding /la/bla to path is needed because of the path mangling
-        # FullStackTest does on extra_test_file.
-        plugin_dir = os.path.join(me, 'la', 'bla')
-        super(BookieBotTests, self).setUp(extra_test_file=plugin_dir)
+	def setUp(self):
+		me = os.path.dirname(os.path.realpath(os.path.abspath(__file__)))
+		# Adding /la/bla to path is needed because of the path mangling
+		# FullStackTest does on extra_test_file.
+		plugin_dir = os.path.join(me, 'la', 'bla')
+		super(BookieBotTests, self).setUp(extra_test_file=plugin_dir)
 
-    def test_scoreboard_empty(self):
-        pushMessage('!scoreboard')
-        self.assertIn('Scoreboard is empty', popMessage())
+	def test_scoreboard_empty(self):
+		pushMessage('!init')
+		popMessage()
+		pushMessage('!scoreboard')
+		self.assertIn('Scoreboard is empty', popMessage())
+
+	def test_start_match(self):
+		pushMessage('!start match Honduras vs. Poland')
+		self.assertIn('Started match', popMessage())
+
+	def test_end_match(self):
+		pushMessage('!start match Honduras vs. Poland')
+		popMessage()
+		pushMessage('!score 1-1 Honduras')
+		popMessage()
+		pushMessage('!end match 0-0 Honduras')
+		self.assertIn('Closed match', popMessage())
+		pushMessage('!scoreboard')
+		self.assertIn('gbin:1', popMessage())
 
 
 class TestGame(unittest.TestCase):
@@ -68,6 +84,7 @@ class TestGame(unittest.TestCase):
 		self.game.new_round(Match(['Argentina', 'Peru']))
 		self.assertRaises(GameError, self.game.close_round, '1-1')	
 
+
 class TestRound(unittest.TestCase):
 	"Tests for round outcomes"
 
@@ -104,6 +121,7 @@ class TestRound(unittest.TestCase):
 		self.round.close('2-1 Russia')
 		self.assertEqual(len(self.round.winners), 3)
 		self.assertEqual(self.round.winners, {'Pete': 1, 'Amanda': 1, 'Marcy': 1})
+
 
 class TestScore(unittest.TestCase):
 	"Tests for score creation and subtraction"
@@ -166,6 +184,7 @@ class TestScore(unittest.TestCase):
 		score_a = Score(self.match, '0-0')
 		score_b = Score(self.other_match, '0-0')
 		self.assertRaises(TypeError, score_a.__sub__, score_b)
+
 
 if __name__ == '__main__':
 	unittest.main()

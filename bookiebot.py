@@ -10,7 +10,7 @@ path.append(dirname(realpath(__file__)))
 
 import settings
 from api import FIFAAPI, HipchatAPI
-from objects import Game, GameError, Match, Score
+from game import Game, GameError, Match, Score
 from utils import get_sender_username, string_join_and
 
 
@@ -18,14 +18,14 @@ class BookieBot(BotPlugin):
 	"""Football Betting Bot for Err"""
 	min_err_version = '1.6.0'
 	max_err_version = '2.0.0'
-	fifa = FIFAAPI()
+	match_source = FIFAAPI()
 
 	def activate(self):
 		"Start game polling on activation"
 		super(BookieBot, self).activate()
 		self.game = self['game'] if 'game' in self else Game()
 		self.start_poller(60, self.start_matches)
-		self.start_poller(301, self.end_matches)
+		self.start_poller(61, self.end_matches)
 
 	def deactivate(self):
 		"Save game on deactivation"
@@ -112,6 +112,7 @@ class BookieBot(BotPlugin):
 		# Adam's easter egg
 		if 'adam' in str(msg).lower():
 			self.respond(msg, "hey buddy")
+		# Bookie bot's "hello world"
 		if 'bookiebot?' in str(msg).lower():
 			self.respond(msg, "Affirmative, {}. I read you.".format(get_sender_username(msg)))
 		# Automatically detect correctly formatted score messages
@@ -120,8 +121,7 @@ class BookieBot(BotPlugin):
 
 	def end_matches(self):
 		"Look for matches that have ended and close them if necessary"
-		for match in [self.fifa.get_match(rnd.match.uuid) for rnd in self.game.active_rounds if hasattr(rnd.match, 'uuid')]:
-			print(match['n_HomeGoals'], match['n_AwayGoals'], match['b_Finished'])
+		for match in [self.match_source.get_match(rnd.match.uuid) for rnd in self.game.active_rounds if hasattr(rnd.match, 'uuid')]:
 			if match['b_Finished']:
 				self.end_match(None, '{}-{} {}'.format(match['n_HomeGoals'], match['n_AwayGoals'], match['c_HomeTeam_en']))
 
@@ -131,7 +131,7 @@ class BookieBot(BotPlugin):
 
 	def start_matches(self):
 		"Look for upcoming matches on FIFA and start a new round if necessary"
-		for match in self.fifa.get_upcoming_matches():
+		for match in self.match_source.get_upcoming_matches():
 			# Only consider matches that are within PRE_MATCH_BETTING_TIME seconds of starting
 			if (match['d_Date'] / 1000) - time() > settings.PRE_MATCH_BETTING_TIME:
 				continue
