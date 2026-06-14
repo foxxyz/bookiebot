@@ -1,7 +1,7 @@
 import operator
 import re
 
-import settings
+from lib.settings import EXACT_GUESS_POINTS, CLOSEST_GUESS_POINTS
 
 
 class GameError(Exception):
@@ -113,7 +113,7 @@ class Round:
         # Calculate scores -- 2 if exact, otherwise 1 for being closest
         for delta in deltas:
             if delta[1] == deltas[0][1]:
-                self.winners[delta[0]] = settings.EXACT_GUESS_POINTS if delta[1] == 0 else settings.CLOSEST_GUESS_POINTS
+                self.winners[delta[0]] = EXACT_GUESS_POINTS if delta[1] == 0 else CLOSEST_GUESS_POINTS
         self.open = False
 
 

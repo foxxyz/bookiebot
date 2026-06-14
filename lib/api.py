@@ -2,16 +2,17 @@ import json
 import operator
 import requests
 from time import time
+from datetime import datetime
 
 import config
-import settings
+from lib.settings import API_KEY, NEW_MATCH_TIME_OFFSET
 
 
-class FIFAAPI:
+class FootballDataAPI:
     """
     Quick and dirty implementation of the FIFA data stream
     """
-    URL = 'http://live.mobileapp.fifa.com/api/wc/matches'
+    URL = 'https://api.football-data.org/v4/competitions/WC/matches'
     CACHE_TIME = 300  # 5 Minutes
     _data = None
     _data_time = None
@@ -20,23 +21,24 @@ class FIFAAPI:
     def data(self):
         "Facade to cache API data"
         if not self._data or time() - self._data_time > self.CACHE_TIME:
-            self._data = requests.get(self.URL).json()['data']
+            headers = {'X-Auth-Token': API_KEY}
+            self._data = requests.get(self.URL, headers=headers).json()
             self._data_time = time()
         return self._data
 
-    def get_match(self, uuid):
+    def get_match(self, id):
         "Get specific match information"
-        all_matches = self.data['group'] + self.data['second']
+        all_matches = self.data['matches']
         for match in all_matches:
-            if match['n_MatchID'] == uuid:
+            if match['id'] == id:
                 return match
 
     def get_upcoming_matches(self):
         "Get upcoming matches"
-        all_matches = self.data['group'] + self.data['second']
+        all_matches = self.data['matches']
         # Include matches that have started less than 30 min ago
-        upcoming = [match for match in all_matches if match['d_Date'] > ((time() - settings.NEW_MATCH_TIME_OFFSET) * 1000)]
-        return sorted(upcoming, key=operator.itemgetter('c_Date'))
+        upcoming = [match for match in all_matches if datetime.fromisoformat(match['utcDate']).timestamp() > (time() - NEW_MATCH_TIME_OFFSET)]
+        return sorted(upcoming, key=operator.itemgetter('utcDate'))
 
 
 class HipchatAPI:

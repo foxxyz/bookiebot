@@ -1,24 +1,18 @@
 import json
 from time import time
+from datetime import datetime
 
 from errbot import BotPlugin, botcmd
 
-# Hack to ensure we can import local modules
-from sys import path
-from os.path import dirname, realpath
-path.append(dirname(realpath(__file__)))
-
-import settings
-from api import FIFAAPI, HipchatAPI
-from game import Game, GameError, Match, Score
-from utils import get_sender_username, string_join_and
+from lib.api import FootballDataAPI
+from lib.game import Game, GameError, Match, Score
+from lib.settings import EXACT_GUESS_POINTS, MAIN_ROOM, PRE_MATCH_BETTING_TIME
+from lib.utils import string_join_and
 
 
 class BookieBot(BotPlugin):
     """Football Betting Bot for Err"""
-    min_err_version = '1.6.0'
-    max_err_version = '2.0.0'
-    match_source = FIFAAPI()
+    match_source = FootballDataAPI()
 
     def activate(self):
         "Start game polling on activation"
@@ -61,9 +55,7 @@ class BookieBot(BotPlugin):
 
     @botcmd(split_args_with=' vs. ', admin_only=True)
     def start_match(self, _, args, uuid=None):
-        """
-        Start a new match and round (Example: `!start match Germany vs. England`)
-        """
+        "Start a new round (Example: `!start match Germany vs. England`)"
         match = Match(args, uuid)
         self.game.new_round(match)
         self.announce("Now taking bets for {}...".format(match))
@@ -81,19 +73,19 @@ class BookieBot(BotPlugin):
         """
         Allow user to enter a score and play (Example: `!score 1-0 Germany`)
 
-        Can be automatically without !score via callback_message
+        Can be called automatically without !score via callback_message
         """
         try:
-            score = self.game.add(args, get_sender_username(msg))
-            return "Thanks {}! I've noted {} for you.".format(get_sender_username(msg), score)
+            score = self.game.add(args, msg.frm.fullname)
+            return "Thanks {}! I've noted {} for you.".format(msg.frm.fullname, score)
         except GameError as error:
             return str(error)
-        except ValueError: # Ignore malformed scores
+        except ValueError:  # Ignore malformed scores
             pass
 
     @botcmd
     def scoreboard(self, _, dummy):
-        "Display scoreboard with points for each player"
+        "Display scoreboard with points"
         if not self.game.scores:
             return 'Scoreboard is empty!'
         else:
@@ -107,43 +99,44 @@ class BookieBot(BotPlugin):
         self.game = Game(json.loads(args))
         return self.scoreboard(None, None)
 
-    def callback_message(self, _, msg):
+    def callback_message(self, msg):
         "Listen to every message in a room"
         # Adam's easter egg
-        if 'adam' in str(msg).lower():
+        if 'adam' in msg.body.lower():
             self.respond(msg, "hey buddy")
         # Bookie bot's "hello world"
-        if 'bookiebot?' in str(msg).lower():
-            self.respond(msg, "Affirmative, {}. I read you.".format(get_sender_username(msg)))
+        if 'bookiebot?' in msg.body.lower():
+            self.respond(msg, "Affirmative, {}. I read you.".format(msg.frm.fullname))
         # Automatically detect correctly formatted score messages
-        if Score.regex.match(str(msg)):
-            self.respond(msg, self.score(msg, str(msg)))
+        if Score.regex.match(msg.body):
+            self.respond(msg, self.score(msg, msg.body))
 
     def end_matches(self):
         "Look for matches that have ended and close them if necessary"
         for match in [self.match_source.get_match(rnd.match.uuid) for rnd in self.game.active_rounds if hasattr(rnd.match, 'uuid')]:
-            if match['b_Finished']:
-                self.end_match(None, '{}-{} {}'.format(match['n_HomeGoals'], match['n_AwayGoals'], match['c_HomeTeam_en']))
+            if match['status'] == 'FINISHED':
+                self.end_match(None, '{}-{} {}'.format(match['score']['fullTime']['home'], match['score']['fullTime']['away'], match['homeTeam']['name']))
 
     def respond(self, msg, text):
         "Shortcut for send()"
-        self.send(msg.getFrom(), text, message_type=msg.getType())
+        self.send(msg.frm, text, in_reply_to=msg)
 
     def start_matches(self):
-        "Look for upcoming matches on FIFA and start a new round if necessary"
+        "Look for upcoming matches and start a new round if necessary"
         for match in self.match_source.get_upcoming_matches():
             # Only consider matches that are within PRE_MATCH_BETTING_TIME seconds of starting
-            if (match['d_Date'] / 1000) - time() > settings.PRE_MATCH_BETTING_TIME:
+            if datetime.fromisoformat(match['utcDate']).timestamp() - time() > PRE_MATCH_BETTING_TIME:
                 continue
             try:
-                self.start_match(None, [match['c_HomeTeam_en'], match['c_AwayTeam_en']], match['n_MatchID'])
+                self.start_match(None, [match['homeTeam']['name'], match['awayTeam']['name']], match['id'])
             except GameError:
                 pass
 
-    @staticmethod
-    def announce(msg):
-        "Send message to Hipchat room"
-        HipchatAPI().send(msg)
+    def announce(self, msg):
+        print(f'announcing: {msg}')
+        "Send message to room"
+        room_id = self.build_identifier(MAIN_ROOM)
+        self.send(room_id, msg)
 
     @staticmethod
     def summarize(winners):
@@ -151,7 +144,7 @@ class BookieBot(BotPlugin):
         if not winners:
             return "there are no winners!"
         points = list(winners.values())[0]
-        if points == settings.EXACT_GUESS_POINTS:
+        if points == EXACT_GUESS_POINTS:
             score_text = "for guessing the score correctly"
         else:
             score_text = "for being closest"
