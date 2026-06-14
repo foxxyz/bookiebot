@@ -28,7 +28,7 @@ The last command adds a basic `config.py` configuration file that we'll fill out
 Add [backend of your choice](https://errbot.readthedocs.io/en/latest/user_guide/setup.html#id1). For example, to add Mattermost:
 
 ```
-git clone git@github.com:errbotio/err-backend-mattermost.git backend-plugins/
+git clone git@github.com:errbotio/err-backend-mattermost.git backend-plugins/err-backend-mattermost
 uv add mattermostdriver
 ```
 
@@ -62,7 +62,7 @@ Ensure the following config variables are set in `config.py`:
 Ensure the following settings are set in `plugins/bookiebot/lib/settings.py`:
 
 * `API_KEY`: football-data.org API key (free)
-* `MAIN_ROOM`: Target room to make announcements in (E.G. `#town-square` or `@username`)
+* `MAIN_ROOM`: Target room to make announcements in (E.G. `~town-square` or `@username`)
 
 Bookiebot should now be ready to go:
 
