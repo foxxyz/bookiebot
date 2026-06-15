@@ -119,7 +119,7 @@ class BookieBot(BotPlugin):
 
     def respond(self, msg, text):
         "Shortcut for send()"
-        self.send(msg.frm, text, in_reply_to=msg)
+        self.send(msg.to, text, in_reply_to=msg)
 
     def start_matches(self):
         "Look for upcoming matches and start a new round if necessary"
