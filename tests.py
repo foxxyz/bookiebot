@@ -1,39 +1,34 @@
-import os
 import unittest
-
-from errbot.backends.test import FullStackTest, pushMessage, popMessage
-
-from game import Game, GameError, Match, Round, Score
+from lib.game import Game, GameError, Match, Round, Score
+from errbot.backends.test import FullStackTest
 
 
-class BookieBotTests(FullStackTest):
-    
+class TestBot(FullStackTest):
+
     def setUp(self):
-        me = os.path.dirname(os.path.realpath(os.path.abspath(__file__)))
-        # Adding /la/bla to path is needed because of the path mangling
-        # FullStackTest does on extra_test_file.
-        plugin_dir = os.path.join(me, 'la', 'bla')
-        super(BookieBotTests, self).setUp(extra_test_file=plugin_dir)
+        super().setUp(extra_plugin_dir='.')
 
     def test_scoreboard_empty(self):
-        pushMessage('!init')
-        popMessage()
-        pushMessage('!scoreboard')
-        self.assertIn('Scoreboard is empty', popMessage())
+        self.push_message('!init')
+        self.pop_message()
+        self.push_message('!scoreboard')
+        self.assertIn('Scoreboard is empty', self.pop_message())
 
     def test_start_match(self):
-        pushMessage('!start match Honduras vs. Poland')
-        self.assertIn('Started match', popMessage())
+        self.push_message('!start match Honduras vs. Poland')
+        self.pop_message()
+        self.assertIn('Started match', self.pop_message())
 
     def test_end_match(self):
-        pushMessage('!start match Honduras vs. Poland')
-        popMessage()
-        pushMessage('!score 1-1 Honduras')
-        popMessage()
-        pushMessage('!end match 0-0 Honduras')
-        self.assertIn('Closed match', popMessage())
-        pushMessage('!scoreboard')
-        self.assertIn('gbin:1', popMessage())
+        self.push_message('!start match Iceland vs. Fireland')
+        self.pop_message()
+        self.pop_message()
+        self.push_message('!score 1-1 Iceland')
+        self.pop_message()
+        self.push_message('!end match 0-0 Iceland')
+        self.assertIn('Final score:', self.pop_message())
+        self.push_message('!scoreboard')
+        self.assertIn('None:1', self.pop_message())
 
 
 class TestGame(unittest.TestCase):
